@@ -31,6 +31,36 @@ public class PricePlanService {
         return Optional.of(pricePlans.stream().collect(
                 Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadings.get(), t))));
     }
+    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsForLastWeek(String smartMeterId) {
+
+        LocalDate now = LocalDate.now();
+        LocalDate lastWeek = LocalDate.from(now.minusWeeks(1));
+        LocalDate beginTime = lastWeek.with(DayOfWeek.MONDAY);
+        LocalDate endTime = lastWeek.with(DayOfWeek.SUNDAY);
+        Instant beginTimeInstant = beginTime.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant endTimeInstant = endTime.atStartOfDay(ZoneId.systemDefault()).toInstant();
+
+        Optional<List<ElectricityReading>> electricityReadings;
+        electricityReadings = meterReadingService.getReadings(smartMeterId);
+
+        if (!electricityReadings.isPresent()) {
+            return Optional.empty();
+        }
+        List<ElectricityReading> electricityReadingsForLastWeek = electricityReadings
+                .get()
+                .stream()
+                .filter(x->x.getTime().compareTo(beginTimeInstant)>=0 && x.getTime().compareTo(endTimeInstant)<=0)
+                .collect(Collectors.toList());
+        if (electricityReadingsForLastWeek.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(pricePlans.stream().collect(
+                Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsForLastWeek, t))));
+
+
+
+
+    }
 
     private BigDecimal calculateCost(List<ElectricityReading> electricityReadings, PricePlan pricePlan) {
         BigDecimal average = calculateAverageReading(electricityReadings);
