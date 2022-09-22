@@ -1,5 +1,6 @@
 package uk.tw.energy.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/price-plans")
@@ -51,6 +53,32 @@ public class PricePlanComparatorController {
                 ? ResponseEntity.ok(pricePlanComparisons)
                 : ResponseEntity.notFound().build();
     }
+
+      @GetMapping("/costlastweek/{smartMeterId}")
+      public ResponseEntity<List<Map.Entry<String, BigDecimal>>> calculatedCostForLastWeek(@PathVariable String smartMeterId){
+        String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
+
+          PricePlan pricePlan = pricePlanService.getPricePlan(smartMeterId);
+          if(pricePlan == null){
+              Map<String,String> wrongResponse = new HashMap<>();
+              wrongResponse.put("Message","There is no price plan, please check it");
+              return new ResponseEntity(wrongResponse, HttpStatus.BAD_REQUEST);
+          }
+
+
+          Optional<Map<String, BigDecimal>> consumptionsForLastWeek
+                  = pricePlanService.getConsumptionCostOfElectricityReadingsForLastWeek(smartMeterId);
+
+          if(!consumptionsForLastWeek.isPresent()){
+              return ResponseEntity.notFound().build();
+          }
+
+          List<Map.Entry<String, BigDecimal>> costForLastWeek = new ArrayList<>(consumptionsForLastWeek.get().entrySet());
+
+          return ResponseEntity.ok(costForLastWeek.stream().filter(m->m.getKey().equals(pricePlanId)).collect(Collectors.toList()));
+
+      }
+
 
     @GetMapping("/recommend/{smartMeterId}")
     public ResponseEntity<List<Map.Entry<String, BigDecimal>>> recommendCheapestPricePlans(@PathVariable String smartMeterId,
