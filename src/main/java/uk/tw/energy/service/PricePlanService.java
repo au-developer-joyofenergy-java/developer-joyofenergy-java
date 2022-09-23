@@ -86,25 +86,23 @@ public class PricePlanService {
 
     public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsDaysOfWeek(String smartMeterId, String pricePlanId) {
 
-        LocalDate todayDate = LocalDate.now();
-        LocalDate beginTime = todayDate.with(DayOfWeek.MONDAY);
-        int gapDays = Period.between(beginTime,todayDate).getDays();
-
-        Optional<List<ElectricityReading>> electricityReadings;
-        electricityReadings = meterReadingService.getReadings(smartMeterId);
+        Optional<List<ElectricityReading>> electricityReadings = meterReadingService.getReadings(smartMeterId);
 
         if(!electricityReadings.isPresent()){
             return Optional.empty();
         }
 
         Map<String, BigDecimal> consumptionsDaysOfWeek = new HashMap<>();
+
+        LocalDate todayDate = LocalDate.now();
+        LocalDate startDayDate = todayDate.with(DayOfWeek.MONDAY);
+        int gapDays = Period.between(startDayDate,todayDate).getDays();
+
         for (int i = 0;i<=gapDays; i++){
 
            LocalDate beginDate = LocalDate.from(todayDate.minusDays(i));
-           LocalDate endDate = LocalDate.from(beginDate.plusDays(i+1));
            Instant beginDateInstant = beginDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-           Instant endDateInstant = endDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-
+           Instant endDateInstant =  beginDateInstant.plusSeconds(86400);
             List<ElectricityReading> electricityReadingsDayOfWeek = electricityReadings
                     .get()
                     .stream()
@@ -117,10 +115,8 @@ public class PricePlanService {
             }else{
                 Map<String,BigDecimal> result= pricePlans.stream().filter(x-> x.getPlanName().equals(pricePlanId)).collect(
                         Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t)));
-
                 consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()),result.get(pricePlanId));
             }
-
 
         }
        return Optional.of(consumptionsDaysOfWeek);
