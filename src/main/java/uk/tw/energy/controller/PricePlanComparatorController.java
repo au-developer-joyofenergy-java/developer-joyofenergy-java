@@ -10,6 +10,8 @@ import uk.tw.energy.service.AccountService;
 import uk.tw.energy.service.PricePlanService;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -73,18 +75,20 @@ public class PricePlanComparatorController {
      @GetMapping("/cost-dayofweek/{smartMeterId}")
      public ResponseEntity<Map<String, Object>> calculatedCostDayOfWeek(@PathVariable String smartMeterId) {
          String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
-         Optional<Map<String, BigDecimal>> consumptionsDayOfWeek =
+         Optional<Map<String, BigDecimal>> consumptionsDayOfWeekForSmartMeterId =
                  pricePlanService.getConsumptionCostOfElectricityReadingsDayOfWeek(smartMeterId);
-         if (!consumptionsDayOfWeek.isPresent()) {
+
+         if (!consumptionsDayOfWeekForSmartMeterId.isPresent()) {
              return ResponseEntity.notFound().build();
          }
-         Map<String, Object> priceDayOfWeek = new HashMap<>();
-         priceDayOfWeek.put(PRICE_PLAN_ID_KEY, pricePlanId);
-         priceDayOfWeek.put("day of week",consumptionsDayOfWeek.get().entrySet().getKey());
-         priceDayOfWeek.put("cost",consumptionsDayOfWeek.get().entrySet().getValue());
 
-         return consumptionsDayOfWeek.isPresent()
-                 ? ResponseEntity.ok(priceDayOfWeek)
+         Map<String, Object> consumptionsDayOfWeek = new HashMap<>();
+         consumptionsDayOfWeek.put(PRICE_PLAN_ID_KEY, pricePlanId);
+         consumptionsDayOfWeek.put("day of week", Instant.now().atZone(ZoneId.systemDefault()).getDayOfWeek());
+         consumptionsDayOfWeek.put("consumptions",consumptionsDayOfWeekForSmartMeterId.get().get(pricePlanId));
+
+         return consumptionsDayOfWeekForSmartMeterId.isPresent()
+                 ? ResponseEntity.ok(consumptionsDayOfWeek)
                  : ResponseEntity.notFound().build();
      }
 

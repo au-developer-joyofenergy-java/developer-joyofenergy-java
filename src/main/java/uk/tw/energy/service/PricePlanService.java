@@ -7,6 +7,9 @@ import uk.tw.energy.domain.PricePlan;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -62,4 +65,27 @@ public class PricePlanService {
         return BigDecimal.valueOf(Duration.between(first.getTime(), last.getTime()).getSeconds() / 3600.0);
     }
 
+    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsDayOfWeek(String smartMeterId) {
+        LocalDate todayDate = LocalDate.now();
+        Instant beginTimeOfTheDay = todayDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant now = Instant.now();
+
+        Optional<List<ElectricityReading>> electricityReadings;
+        electricityReadings = meterReadingService.getReadings(smartMeterId);
+
+        if (!electricityReadings.isPresent()) {
+            return Optional.empty();
+        }
+        List<ElectricityReading> electricityReadingsDayOfWeek = electricityReadings
+                .get()
+                .stream()
+                .filter(x->x.getTime().compareTo(beginTimeOfTheDay)>=0 && x.getTime().compareTo(now)<=0)
+                .collect(Collectors.toList());
+
+        if (electricityReadingsDayOfWeek.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(pricePlans.stream().collect(
+                Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t))));
+    }
 }
