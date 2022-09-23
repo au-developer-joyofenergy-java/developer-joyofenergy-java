@@ -65,7 +65,7 @@ public class PricePlanService {
         return BigDecimal.valueOf(Duration.between(first.getTime(), last.getTime()).getSeconds() / 3600.0);
     }
 
-    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsDayOfWeek(String smartMeterId) {
+    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsDayOfWeek(String smartMeterId, String pricePlanId) {
         LocalDate todayDate = LocalDate.now();
         Instant beginTimeOfTheDay = todayDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
         Instant now = Instant.now();
@@ -85,7 +85,7 @@ public class PricePlanService {
         if (electricityReadingsDayOfWeek.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(pricePlans.stream().collect(
+        return Optional.of( pricePlans.stream().filter(x->x.getPlanName()==pricePlanId).collect(
                 Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t))));
     }
 }

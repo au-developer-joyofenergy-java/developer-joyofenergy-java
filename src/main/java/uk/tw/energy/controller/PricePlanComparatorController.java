@@ -75,22 +75,24 @@ public class PricePlanComparatorController {
      @GetMapping("/cost-dayofweek/{smartMeterId}")
      public ResponseEntity<Map<String, Object>> calculatedCostDayOfWeek(@PathVariable String smartMeterId) {
          String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
-         Optional<Map<String, BigDecimal>> consumptionsDayOfWeekForSmartMeterId =
-                 pricePlanService.getConsumptionCostOfElectricityReadingsDayOfWeek(smartMeterId);
+         Optional<Map<String, BigDecimal>> consumptionsCostDayOfWeekForSmartMeterId =
+                 pricePlanService.getConsumptionCostOfElectricityReadingsDayOfWeek(smartMeterId,pricePlanId);
 
-         if (!consumptionsDayOfWeekForSmartMeterId.isPresent()) {
+         if (!consumptionsCostDayOfWeekForSmartMeterId.isPresent()) {
              return ResponseEntity.notFound().build();
          }
 
          Map<String, Object> consumptionsDayOfWeek = new HashMap<>();
+         consumptionsDayOfWeek.put("consumptions",consumptionsCostDayOfWeekForSmartMeterId.get().get(pricePlanId));
          consumptionsDayOfWeek.put(PRICE_PLAN_ID_KEY, pricePlanId);
          consumptionsDayOfWeek.put("day of week", Instant.now().atZone(ZoneId.systemDefault()).getDayOfWeek());
-         consumptionsDayOfWeek.put("consumptions",consumptionsDayOfWeekForSmartMeterId.get().get(pricePlanId));
 
-         return consumptionsDayOfWeekForSmartMeterId.isPresent()
+         return consumptionsCostDayOfWeekForSmartMeterId.isPresent()
                  ? ResponseEntity.ok(consumptionsDayOfWeek)
                  : ResponseEntity.notFound().build();
      }
+
+
 
 
 }
