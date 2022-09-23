@@ -6,14 +6,8 @@ import uk.tw.energy.domain.PricePlan;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.time.*;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -85,7 +79,55 @@ public class PricePlanService {
         if (electricityReadingsDayOfWeek.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of( pricePlans.stream().filter(x->x.getPlanName()==pricePlanId).collect(
-                Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t))));
+        Map<String,BigDecimal> result = pricePlans.stream().filter(x-> x.getPlanName().equals(pricePlanId)).collect(
+                Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t)));
+        return Optional.of(result);
     }
+
+    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsDaysOfWeek(String smartMeterId, String pricePlanId) {
+
+        LocalDate todayDate = LocalDate.now();
+        LocalDate beginTime = todayDate.with(DayOfWeek.MONDAY);
+        int gapDays = Period.between(beginTime,todayDate).getDays();
+
+        Optional<List<ElectricityReading>> electricityReadings;
+        electricityReadings = meterReadingService.getReadings(smartMeterId);
+
+        if(!electricityReadings.isPresent()){
+            return Optional.empty();
+        }
+
+        Map<String, BigDecimal> consumptionsDaysOfWeek = new HashMap<>();
+        for (int i = 0;i<=gapDays; i++){
+
+           LocalDate beginDate = LocalDate.from(todayDate.minusDays(i));
+           LocalDate endDate = LocalDate.from(beginDate.plusDays(i+1));
+           Instant beginDateInstant = beginDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+           Instant endDateInstant = endDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+
+            List<ElectricityReading> electricityReadingsDayOfWeek = electricityReadings
+                    .get()
+                    .stream()
+                    .filter(x->x.getTime().compareTo(beginDateInstant)>=0 && x.getTime().compareTo(endDateInstant)<=0)
+                    .collect(Collectors.toList());
+
+            if(electricityReadingsDayOfWeek.isEmpty()){
+                consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()),new BigDecimal(0));
+
+            }else{
+                Map<String,BigDecimal> result= pricePlans.stream().filter(x-> x.getPlanName().equals(pricePlanId)).collect(
+                        Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t)));
+
+                consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()),result.get(pricePlanId));
+            }
+
+
+        }
+       return Optional.of(consumptionsDaysOfWeek);
+
+
+
+
+    }
+
 }
