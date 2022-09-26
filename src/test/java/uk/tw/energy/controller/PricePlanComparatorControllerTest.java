@@ -3,6 +3,7 @@ package uk.tw.energy.controller;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
 import uk.tw.energy.domain.ElectricityReading;
 import uk.tw.energy.domain.PricePlan;
 import uk.tw.energy.service.AccountService;
@@ -10,7 +11,7 @@ import uk.tw.energy.service.MeterReadingService;
 import uk.tw.energy.service.PricePlanService;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.*;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static uk.tw.energy.controller.PricePlanComparatorController.PRICE_PLAN_ID_KEY;
 
 public class PricePlanComparatorControllerTest {
 
@@ -60,7 +62,7 @@ public class PricePlanComparatorControllerTest {
         expectedPricePlanToCost.put(PRICE_PLAN_3_ID, BigDecimal.valueOf(20.0));
 
         Map<String, Object> expected = new HashMap<>();
-        expected.put(PricePlanComparatorController.PRICE_PLAN_ID_KEY, PRICE_PLAN_1_ID);
+        expected.put(PRICE_PLAN_ID_KEY, PRICE_PLAN_1_ID);
         expected.put(PricePlanComparatorController.PRICE_PLAN_COMPARISONS_KEY, expectedPricePlanToCost);
         assertThat(controller.calculatedCostForEachPricePlan(SMART_METER_ID).getBody()).isEqualTo(expected);
     }
@@ -114,4 +116,75 @@ public class PricePlanComparatorControllerTest {
     public void givenNoMatchingMeterIdShouldReturnNotFound() {
         assertThat(controller.calculatedCostForEachPricePlan("not-found").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
+    @Test
+    public void shouldCalulatedCostDayOfWeek() throws Exception {
+
+        ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(1800), BigDecimal.valueOf(1.0));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(1.0));
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading, otherReading));
+
+        Map<String,Object> result = new HashMap<>();
+        result.put("consumptions",BigDecimal.valueOf(20.0));
+        result.put(PRICE_PLAN_ID_KEY,PRICE_PLAN_1_ID);
+        result.put("day of week",Instant.now().atZone(ZoneId.systemDefault()).getDayOfWeek());
+
+        assertThat(controller.calculatedCostDayOfWeek(SMART_METER_ID).getBody()).isEqualTo(result);
+    }
+    @Test
+    public void calculatedCostForDaysOfWeek() throws Exception {
+
+        ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(1800), BigDecimal.valueOf(1.0));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(1.0));
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading, otherReading));
+
+        List<Map.Entry<String, BigDecimal>> result = new ArrayList<>();
+        LocalDate todayDate = LocalDate.now();
+        result.add(new AbstractMap.SimpleEntry<>(String.valueOf(todayDate.getDayOfWeek()),BigDecimal.valueOf(20.0)));
+        assertThat(controller.calculatedCostForDaysOfWeek(SMART_METER_ID).getBody()).isEqualTo(result);
+    }
+
+    @Test
+    public void shouldRecommendCheapestPricePlansForDaysOfWeekNoLimitForMeterUsage() throws Exception {
+
+        ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(1800), BigDecimal.valueOf(3.0));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3));
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading, otherReading));
+
+        List<Map.Entry<String, Map<String,BigDecimal>>>expectedPricePlanToCost = new ArrayList<>();
+        LocalDate todayDate = LocalDate.now();
+        Map<String,BigDecimal> result = new HashMap<>();
+        result.put(PRICE_PLAN_2_ID,BigDecimal.valueOf(6.0));
+        result.put(PRICE_PLAN_3_ID,BigDecimal.valueOf(12.0));
+        result.put(PRICE_PLAN_1_ID,BigDecimal.valueOf(60.0));
+        expectedPricePlanToCost.add(new AbstractMap.SimpleEntry<>(String.valueOf(todayDate.getDayOfWeek()),result));
+        assertThat(controller.recommendCheapestPricePlansForDaysOfWeek(SMART_METER_ID, null).getBody()).isEqualTo(expectedPricePlanToCost);
+    }
+    @Test
+    public void shouldRecommendCheapestPricePlansForDaysOfWeekLimitForMeterUsage() throws Exception {
+
+        ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(1800), BigDecimal.valueOf(35.0));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading, otherReading));
+
+        List<Map.Entry<String, Map<String,BigDecimal>>>expectedPricePlanToCost = new ArrayList<>();
+        LocalDate todayDate = LocalDate.now();
+        Map<String,BigDecimal> result = new HashMap<>();
+        result.put(PRICE_PLAN_2_ID,new BigDecimal(38.0));
+        result.put(PRICE_PLAN_3_ID,new BigDecimal(76.0));
+        result.put(PRICE_PLAN_1_ID,new BigDecimal(380.0));
+        expectedPricePlanToCost.add(new AbstractMap.SimpleEntry<>(String.valueOf(todayDate.getDayOfWeek()),result));
+        assertThat(controller.recommendCheapestPricePlansForDaysOfWeek(SMART_METER_ID, 1).getBody()).isEqualTo(expectedPricePlanToCost);
+    }
+    @Test
+    public void shouldRecommendCheapestPricePlansForDaysOfWeekWhenLimitISZero() throws Exception {
+
+        ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(1800), BigDecimal.valueOf(35.0));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading, otherReading));
+
+        List<Map.Entry<String, Map<String,BigDecimal>>>expectedPricePlanToCost = new ArrayList<>();
+        LocalDate todayDate = LocalDate.now();
+        assertThat(controller.recommendCheapestPricePlansForDaysOfWeek(SMART_METER_ID, 0).getBody()).isEqualTo(expectedPricePlanToCost);
+    }
+
 }
