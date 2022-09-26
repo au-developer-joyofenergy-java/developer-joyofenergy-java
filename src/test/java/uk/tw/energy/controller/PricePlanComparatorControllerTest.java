@@ -1,5 +1,6 @@
 package uk.tw.energy.controller;
 
+import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static uk.tw.energy.controller.PricePlanComparatorController.PRICE_PLAN_ID_KEY;
+
+
 
 public class PricePlanComparatorControllerTest {
 
@@ -62,7 +65,7 @@ public class PricePlanComparatorControllerTest {
         expectedPricePlanToCost.put(PRICE_PLAN_3_ID, BigDecimal.valueOf(20.0));
 
         Map<String, Object> expected = new HashMap<>();
-        expected.put(PRICE_PLAN_ID_KEY, PRICE_PLAN_1_ID);
+        expected.put(PricePlanComparatorController.PRICE_PLAN_ID_KEY, PRICE_PLAN_1_ID);
         expected.put(PricePlanComparatorController.PRICE_PLAN_COMPARISONS_KEY, expectedPricePlanToCost);
         assertThat(controller.calculatedCostForEachPricePlan(SMART_METER_ID).getBody()).isEqualTo(expected);
     }
@@ -115,6 +118,42 @@ public class PricePlanComparatorControllerTest {
     @Test
     public void givenNoMatchingMeterIdShouldReturnNotFound() {
         assertThat(controller.calculatedCostForEachPricePlan("not-found").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    public void shouldCalculateCostForLastWeek()throws Exception{
+
+        ElectricityReading electricityReadingFirst = new ElectricityReading(Instant.now().minusSeconds(604800), BigDecimal.valueOf(3.0));
+        ElectricityReading electricityReadingSecond = new ElectricityReading(Instant.now().minusSeconds(518400), BigDecimal.valueOf(4.0));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
+
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReadingFirst,electricityReadingSecond,otherReading));
+
+        List<Map.Entry<String, BigDecimal>> expectedPriceLastWeekToCost = new ArrayList<>();
+
+         expectedPriceLastWeekToCost.add(new AbstractMap.SimpleEntry<>(PRICE_PLAN_1_ID, BigDecimal.valueOf(1.0)));
+        assertThat(controller.calculatedCostForLastWeek(SMART_METER_ID).getBody()).isEqualTo(expectedPriceLastWeekToCost);
+
+
+    }
+    @Test
+    public void shouldReturnNonFoundWhenLastWeekUsageIsNull()throws Exception{
+
+        ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(3600), BigDecimal.valueOf(0.2569));
+        ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
+
+        meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading,otherReading));
+
+        assertThat(controller.calculatedCostForLastWeek(SMART_METER_ID).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+
+    }
+    @Test
+    public void ShouldReturnMessageWhenPricePlanIdIsNull() {
+
+        assertThat(controller.calculatedCostForLastWeek("smart_meter_5").getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+
     }
     @Test
     public void shouldCalulatedCostDayOfWeek() throws Exception {
