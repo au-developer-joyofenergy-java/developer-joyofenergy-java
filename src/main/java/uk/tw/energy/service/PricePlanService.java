@@ -103,27 +103,71 @@ public class PricePlanService {
            LocalDate beginDate = LocalDate.from(todayDate.minusDays(i));
            Instant beginDateInstant = beginDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
            Instant endDateInstant =  beginDateInstant.plusSeconds(86400);
-            List<ElectricityReading> electricityReadingsDayOfWeek = electricityReadings
+            List<ElectricityReading> electricityReadingsDaysOfWeek = electricityReadings
                     .get()
                     .stream()
                     .filter(x->x.getTime().compareTo(beginDateInstant)>=0 && x.getTime().compareTo(endDateInstant)<=0)
                     .collect(Collectors.toList());
 
-            if(electricityReadingsDayOfWeek.isEmpty()){
+            if(electricityReadingsDaysOfWeek.isEmpty()){
                 consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()),new BigDecimal(0));
 
             }else{
                 Map<String,BigDecimal> result= pricePlans.stream().filter(x-> x.getPlanName().equals(pricePlanId)).collect(
-                        Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDayOfWeek, t)));
+                        Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDaysOfWeek, t)));
                 consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()),result.get(pricePlanId));
             }
 
         }
        return Optional.of(consumptionsDaysOfWeek);
-
-
-
-
     }
 
+    public Optional<Map<String, Map<String,BigDecimal>>> getConsumptionCostOfElectricityReadingsDaysOfWeekForEachPricePlan(String smartMeterId) {
+        Optional<List<ElectricityReading>> electricityReadings = meterReadingService.getReadings(smartMeterId);
+        if (!electricityReadings.isPresent()) {
+            return Optional.empty();
+        }
+        LocalDate todayDate = LocalDate.now();
+        LocalDate startDayDate = todayDate.with(DayOfWeek.MONDAY);
+        int gapDays = Period.between(startDayDate,todayDate).getDays();
+
+        Map<String, Map<String,BigDecimal>> consumptionsDaysOfWeek = new HashMap<>();
+
+        for (int i = 0;i<=gapDays; i++){
+
+            LocalDate beginDate = LocalDate.from(todayDate.minusDays(i));
+            Instant beginDateInstant = beginDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+            Instant endDateInstant =  beginDateInstant.plusSeconds(86400);
+            List<ElectricityReading> electricityReadingsDaysOfWeek = electricityReadings
+                    .get()
+                    .stream()
+                    .filter(x->x.getTime().compareTo(beginDateInstant)>=0 && x.getTime().compareTo(endDateInstant)<=0)
+                    .collect(Collectors.toList());
+
+            if(electricityReadingsDaysOfWeek.isEmpty()){
+                Map<String,BigDecimal> map = new HashMap<>();
+                 pricePlans.stream().map((x)->
+                    map.put(x.getPlanName(),new BigDecimal(0))
+                );
+
+                consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()), map);
+
+
+            }else{
+                Map<String,BigDecimal> result= pricePlans.stream().collect(
+                        Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsDaysOfWeek, t)));
+                List<Map.Entry<String,BigDecimal>>  resultList = new ArrayList<>(result.entrySet());
+                resultList.sort(Comparator.comparing(Map.Entry::getValue));
+                Map<String,BigDecimal> sortedResult = new HashMap<>();
+                for(Map.Entry<String,BigDecimal> entry:resultList){
+                    sortedResult.put(entry.getKey(),entry.getValue());
+
+                }
+                consumptionsDaysOfWeek.put(String.valueOf(beginDate.getDayOfWeek()), sortedResult);
+            }
+
+        }
+
+        return Optional.of(consumptionsDaysOfWeek);
+    }
 }

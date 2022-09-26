@@ -101,11 +101,31 @@ public class PricePlanComparatorController {
         if (!consumptionsCostDaysOfWeekForSmartMeterId.isPresent()) {
             return ResponseEntity.notFound().build();
         }
-            List<Map.Entry<String, BigDecimal>> consumptionsRanksDayOfWeek = new ArrayList<>(consumptionsCostDaysOfWeekForSmartMeterId.get().entrySet());
-            consumptionsRanksDayOfWeek.sort(Comparator.comparing(Map.Entry::getValue));
-            return ResponseEntity.ok(consumptionsRanksDayOfWeek);
+            List<Map.Entry<String, BigDecimal>> consumptionsRanksDaysOfWeek = new ArrayList<>(consumptionsCostDaysOfWeekForSmartMeterId.get().entrySet());
+            consumptionsRanksDaysOfWeek.sort(Comparator.comparing(Map.Entry::getValue));
+            return ResponseEntity.ok(consumptionsRanksDaysOfWeek);
 
     }
+     @GetMapping("/cost-compare/daysofweek-plans/{smartMeterId}")
+     public ResponseEntity<List<Map.Entry<String, Map<String, BigDecimal>>>> recommendCheapestPricePlansForDaysOfWeek(@PathVariable String smartMeterId,
+                                                                                                                      @RequestParam(value = "limit", required = false) Integer limit) {
+         Optional<Map<String, Map<String,BigDecimal>>> consumptionsCostDaysOfWeekWithPricePlans =
+                 pricePlanService.getConsumptionCostOfElectricityReadingsDaysOfWeekForEachPricePlan(smartMeterId);
+
+         if (!consumptionsCostDaysOfWeekWithPricePlans.isPresent()) {
+             return ResponseEntity.notFound().build();
+         }
+
+        List<Map.Entry<String, Map<String,BigDecimal>>> consumptionsRanksDaysOfWeekFoEachPricePlan = new ArrayList<>(consumptionsCostDaysOfWeekWithPricePlans.get().entrySet());
+
+         if (limit != null && limit < consumptionsRanksDaysOfWeekFoEachPricePlan.size()) {
+             consumptionsRanksDaysOfWeekFoEachPricePlan = consumptionsRanksDaysOfWeekFoEachPricePlan.subList(0, limit);
+         }
+
+         return  ResponseEntity.ok(consumptionsRanksDaysOfWeekFoEachPricePlan);
+
+     }
+
 
 
 
