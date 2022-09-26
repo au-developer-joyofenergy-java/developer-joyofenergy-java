@@ -106,12 +106,10 @@ public class PricePlanComparatorControllerTest {
         ElectricityReading electricityReading = new ElectricityReading(Instant.now().minusSeconds(3600), BigDecimal.valueOf(25.0));
         ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
         meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading, otherReading));
-
         List<Map.Entry<String, BigDecimal>> expectedPricePlanToCost = new ArrayList<>();
         expectedPricePlanToCost.add(new AbstractMap.SimpleEntry<>(PRICE_PLAN_2_ID, BigDecimal.valueOf(14.0)));
         expectedPricePlanToCost.add(new AbstractMap.SimpleEntry<>(PRICE_PLAN_3_ID, BigDecimal.valueOf(28.0)));
         expectedPricePlanToCost.add(new AbstractMap.SimpleEntry<>(PRICE_PLAN_1_ID, BigDecimal.valueOf(140.0)));
-
         assertThat(controller.recommendCheapestPricePlans(SMART_METER_ID, 5).getBody()).isEqualTo(expectedPricePlanToCost);
     }
 
@@ -126,12 +124,9 @@ public class PricePlanComparatorControllerTest {
         ElectricityReading electricityReadingFirst = new ElectricityReading(Instant.now().minusSeconds(604800), BigDecimal.valueOf(3.0));
         ElectricityReading electricityReadingSecond = new ElectricityReading(Instant.now().minusSeconds(518400), BigDecimal.valueOf(4.0));
         ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
-
         meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReadingFirst,electricityReadingSecond,otherReading));
-
         List<Map.Entry<String, BigDecimal>> expectedPriceLastWeekToCost = new ArrayList<>();
-
-         expectedPriceLastWeekToCost.add(new AbstractMap.SimpleEntry<>(PRICE_PLAN_1_ID, BigDecimal.valueOf(1.0)));
+        expectedPriceLastWeekToCost.add(new AbstractMap.SimpleEntry<>(PRICE_PLAN_1_ID, BigDecimal.valueOf(1.0)));
         assertThat(controller.calculatedCostForLastWeek(SMART_METER_ID).getBody()).isEqualTo(expectedPriceLastWeekToCost);
 
 
@@ -143,17 +138,13 @@ public class PricePlanComparatorControllerTest {
         ElectricityReading otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
 
         meterReadingService.storeReadings(SMART_METER_ID, Arrays.asList(electricityReading,otherReading));
-
         assertThat(controller.calculatedCostForLastWeek(SMART_METER_ID).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
 
     }
     @Test
     public void ShouldReturnMessageWhenPricePlanIdIsNull() {
-
         assertThat(controller.calculatedCostForLastWeek("smart_meter_5").getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-
-
     }
     @Test
     public void shouldCalulatedCostDayOfWeek() throws Exception {
@@ -166,7 +157,6 @@ public class PricePlanComparatorControllerTest {
         result.put("consumptions",BigDecimal.valueOf(20.0));
         result.put(PRICE_PLAN_ID_KEY,PRICE_PLAN_1_ID);
         result.put("day of week",Instant.now().atZone(ZoneId.systemDefault()).getDayOfWeek());
-
         assertThat(controller.calculatedCostDayOfWeek(SMART_METER_ID).getBody()).isEqualTo(result);
     }
     @Test
@@ -208,9 +198,9 @@ public class PricePlanComparatorControllerTest {
         List<Map.Entry<String, Map<String,BigDecimal>>>expectedPricePlanToCost = new ArrayList<>();
         LocalDate todayDate = LocalDate.now();
         Map<String,BigDecimal> result = new HashMap<>();
-        result.put(PRICE_PLAN_2_ID,new BigDecimal(38.0));
-        result.put(PRICE_PLAN_3_ID,new BigDecimal(76.0));
-        result.put(PRICE_PLAN_1_ID,new BigDecimal(380.0));
+        result.put(PRICE_PLAN_2_ID,BigDecimal.valueOf(38.0));
+        result.put(PRICE_PLAN_3_ID,BigDecimal.valueOf(76.0));
+        result.put(PRICE_PLAN_1_ID,BigDecimal.valueOf(380.0));
         expectedPricePlanToCost.add(new AbstractMap.SimpleEntry<>(String.valueOf(todayDate.getDayOfWeek()),result));
         assertThat(controller.recommendCheapestPricePlansForDaysOfWeek(SMART_METER_ID, 1).getBody()).isEqualTo(expectedPricePlanToCost);
     }

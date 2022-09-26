@@ -57,46 +57,34 @@ public class PricePlanComparatorController {
       @GetMapping("/costlastweek/{smartMeterId}")
       public ResponseEntity<List<Map.Entry<String, BigDecimal>>> calculatedCostForLastWeek(@PathVariable String smartMeterId){
         String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
-
-          PricePlan pricePlan = pricePlanService.getPricePlan(smartMeterId);
-          if(pricePlan == null){
+          if(pricePlanId == null){
               Map<String,String> wrongResponse = new HashMap<>();
               wrongResponse.put("Message","There is no price plan, please check it");
               return new ResponseEntity(wrongResponse, HttpStatus.BAD_REQUEST);
           }
-
-
           Optional<Map<String, BigDecimal>> consumptionsForLastWeek
                   = pricePlanService.getConsumptionCostOfElectricityReadingsForLastWeek(smartMeterId,pricePlanId);
-
           if(!consumptionsForLastWeek.isPresent()){
               return ResponseEntity.notFound().build();
           }
-
           List<Map.Entry<String, BigDecimal>> costForLastWeek = new ArrayList<>(consumptionsForLastWeek.get().entrySet());
-
           return ResponseEntity.ok(costForLastWeek.stream().filter(m->m.getKey().equals(pricePlanId)).collect(Collectors.toList()));
 
       }
-
 
     @GetMapping("/recommend/{smartMeterId}")
     public ResponseEntity<List<Map.Entry<String, BigDecimal>>> recommendCheapestPricePlans(@PathVariable String smartMeterId,
                                                                                            @RequestParam(value = "limit", required = false) Integer limit) {
         Optional<Map<String, BigDecimal>> consumptionsForPricePlans =
                 pricePlanService.getConsumptionCostOfElectricityReadingsForEachPricePlan(smartMeterId);
-
         if (!consumptionsForPricePlans.isPresent()) {
             return ResponseEntity.notFound().build();
         }
-
         List<Map.Entry<String, BigDecimal>> recommendations = new ArrayList<>(consumptionsForPricePlans.get().entrySet());
         recommendations.sort(Comparator.comparing(Map.Entry::getValue));
-
         if (limit != null && limit < recommendations.size()) {
             recommendations = recommendations.subList(0, limit);
         }
-
         return ResponseEntity.ok(recommendations);
     }
 
@@ -109,7 +97,6 @@ public class PricePlanComparatorController {
          if (!consumptionsCostDayOfWeekForSmartMeterId.isPresent()) {
              return ResponseEntity.notFound().build();
          }
-
          Map<String, Object> consumptionsDayOfWeek = new HashMap<>();
          consumptionsDayOfWeek.put("consumptions",consumptionsCostDayOfWeekForSmartMeterId.get().get(pricePlanId));
          consumptionsDayOfWeek.put(PRICE_PLAN_ID_KEY, pricePlanId);
@@ -143,18 +130,12 @@ public class PricePlanComparatorController {
          if (!consumptionsCostDaysOfWeekWithPricePlans.isPresent()) {
              return ResponseEntity.notFound().build();
          }
-
         List<Map.Entry<String, Map<String,BigDecimal>>> consumptionsRanksDaysOfWeekFoEachPricePlan = new ArrayList<>(consumptionsCostDaysOfWeekWithPricePlans.get().entrySet());
-
          if (limit != null && limit < consumptionsRanksDaysOfWeekFoEachPricePlan.size()) {
              consumptionsRanksDaysOfWeekFoEachPricePlan = consumptionsRanksDaysOfWeekFoEachPricePlan.subList(0, limit);
          }
-
          return  ResponseEntity.ok(consumptionsRanksDaysOfWeekFoEachPricePlan);
 
      }
-
-
-
 
 }
