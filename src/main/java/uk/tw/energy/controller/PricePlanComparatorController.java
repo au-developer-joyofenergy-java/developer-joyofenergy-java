@@ -10,6 +10,8 @@ import uk.tw.energy.service.AccountService;
 import uk.tw.energy.service.PricePlanService;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -69,4 +71,62 @@ public class PricePlanComparatorController {
 
         return ResponseEntity.ok(recommendations);
     }
+
+     @GetMapping("/cost-dayofweek/{smartMeterId}")
+     public ResponseEntity<Map<String, Object>> calculatedCostDayOfWeek(@PathVariable String smartMeterId) {
+         String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
+         Optional<Map<String, BigDecimal>> consumptionsCostDayOfWeekForSmartMeterId =
+                 pricePlanService.getConsumptionCostOfElectricityReadingsDayOfWeek(smartMeterId,pricePlanId);
+
+         if (!consumptionsCostDayOfWeekForSmartMeterId.isPresent()) {
+             return ResponseEntity.notFound().build();
+         }
+
+         Map<String, Object> consumptionsDayOfWeek = new HashMap<>();
+         consumptionsDayOfWeek.put("consumptions",consumptionsCostDayOfWeekForSmartMeterId.get().get(pricePlanId));
+         consumptionsDayOfWeek.put(PRICE_PLAN_ID_KEY, pricePlanId);
+         consumptionsDayOfWeek.put("day of week", Instant.now().atZone(ZoneId.systemDefault()).getDayOfWeek());
+
+         return consumptionsCostDayOfWeekForSmartMeterId.isPresent()
+                 ? ResponseEntity.ok(consumptionsDayOfWeek)
+                 : ResponseEntity.notFound().build();
+     }
+
+     @GetMapping("/cost-compare/daysofweek/{smartMeterId}")
+     public ResponseEntity<List<Map.Entry<String, BigDecimal>>> calculatedCostForDaysOfWeek(@PathVariable String smartMeterId) {
+        String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
+        Optional<Map<String, BigDecimal>> consumptionsCostDaysOfWeekForSmartMeterId =
+                pricePlanService.getConsumptionCostOfElectricityReadingsDaysOfWeek(smartMeterId,pricePlanId);
+
+        if (!consumptionsCostDaysOfWeekForSmartMeterId.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<Map.Entry<String, BigDecimal>> consumptionsRanksDaysOfWeek = new ArrayList<>(consumptionsCostDaysOfWeekForSmartMeterId.get().entrySet());
+        consumptionsRanksDaysOfWeek.sort(Comparator.comparing(Map.Entry::getValue));
+        return ResponseEntity.ok(consumptionsRanksDaysOfWeek);
+
+    }
+     @GetMapping("/cost-compare/daysofweek-plans/{smartMeterId}")
+     public ResponseEntity<List<Map.Entry<String, Map<String, BigDecimal>>>> recommendCheapestPricePlansForDaysOfWeek(@PathVariable String smartMeterId,
+                                                                                                                      @RequestParam(value = "limit", required = false) Integer limit) {
+         Optional<Map<String, Map<String,BigDecimal>>> consumptionsCostDaysOfWeekWithPricePlans =
+                 pricePlanService.getConsumptionCostOfElectricityReadingsDaysOfWeekForEachPricePlan(smartMeterId);
+
+         if (!consumptionsCostDaysOfWeekWithPricePlans.isPresent()) {
+             return ResponseEntity.notFound().build();
+         }
+
+        List<Map.Entry<String, Map<String,BigDecimal>>> consumptionsRanksDaysOfWeekFoEachPricePlan = new ArrayList<>(consumptionsCostDaysOfWeekWithPricePlans.get().entrySet());
+
+         if (limit != null && limit < consumptionsRanksDaysOfWeekFoEachPricePlan.size()) {
+             consumptionsRanksDaysOfWeekFoEachPricePlan = consumptionsRanksDaysOfWeekFoEachPricePlan.subList(0, limit);
+         }
+
+         return  ResponseEntity.ok(consumptionsRanksDaysOfWeekFoEachPricePlan);
+
+     }
+
+
+
+
 }
