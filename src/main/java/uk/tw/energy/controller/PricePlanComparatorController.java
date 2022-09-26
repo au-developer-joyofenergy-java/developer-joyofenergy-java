@@ -67,7 +67,7 @@ public class PricePlanComparatorController {
 
 
           Optional<Map<String, BigDecimal>> consumptionsForLastWeek
-                  = pricePlanService.getConsumptionCostOfElectricityReadingsForLastWeek(smartMeterId);
+                  = pricePlanService.getConsumptionCostOfElectricityReadingsForLastWeek(smartMeterId,pricePlanId);
 
           if(!consumptionsForLastWeek.isPresent()){
               return ResponseEntity.notFound().build();

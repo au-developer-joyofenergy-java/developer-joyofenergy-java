@@ -31,7 +31,7 @@ public class PricePlanService {
         return Optional.of(pricePlans.stream().collect(
                 Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadings.get(), t))));
     }
-    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsForLastWeek(String smartMeterId) {
+    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsForLastWeek(String smartMeterId,String pricePlanId) {
 
         LocalDate now = LocalDate.now();
         LocalDate lastWeek = LocalDate.from(now.minusWeeks(1));
@@ -54,8 +54,9 @@ public class PricePlanService {
         if (electricityReadingsForLastWeek.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(pricePlans.stream().collect(
-                Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsForLastWeek, t))));
+        Map<String,BigDecimal> result = pricePlans.stream().filter(x-> x.getPlanName().equals(pricePlanId)).collect(
+                Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadingsForLastWeek, t)));
+        return Optional.of(result);
 
 
 
