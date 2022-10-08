@@ -124,7 +124,6 @@ public class PricePlanComparatorController {
 
     @GetMapping("/cost-compare/daysofweek/{smartMeterId}")
     public ResponseEntity<Map<String, BigDecimal>> calculatedCostForDaysOfWeek(@PathVariable String smartMeterId) {
-
         String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
         if (checkNullOrBlank(pricePlanId)) {
             Map<String, String> wrongResponse = new HashMap<>(1);
@@ -158,12 +157,10 @@ public class PricePlanComparatorController {
         if (limit != null) {
             Map<DayOfWeek, Map<String, BigDecimal>> consumptionsCostDaysOfWeekWithPricePlans =
                     pricePlanService.getConsumptionCostOfElectricityReadingsDaysOfWeekForEachPricePlan(smartMeterId, todayDate, limit);
-
             return ResponseEntity.ok(consumptionsCostDaysOfWeekWithPricePlans);
         } else {
             Map<DayOfWeek, Map<String, BigDecimal>> consumptionsCostDaysOfWeekWithPricePlans =
                     pricePlanService.getConsumptionCostOfElectricityReadingsDaysOfWeekForEachPricePlanWithOutLimit(smartMeterId, todayDate);
-
             return ResponseEntity.ok(consumptionsCostDaysOfWeekWithPricePlans);
         }
 
