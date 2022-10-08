@@ -7,6 +7,7 @@ import uk.tw.energy.domain.ElectricityReading;
 import uk.tw.energy.domain.MeterReadings;
 import uk.tw.energy.service.MeterReadingService;
 
+import java.util.Collection;
 import java.util.List;
 
 @RestController
@@ -38,9 +39,12 @@ public class MeterReadingController {
     @GetMapping("/read/{smartMeterId}")
     public ResponseEntity readReadings(@PathVariable String smartMeterId) {
         List<ElectricityReading> readings = meterReadingService.getReadings(smartMeterId);
-        if (readings.isEmpty()) {
+        if (IsNullOrEmpty(readings)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(readings);
+    }
+    public static <T> boolean IsNullOrEmpty(Collection<T> list) {
+        return list == null || list.isEmpty();
     }
 }
