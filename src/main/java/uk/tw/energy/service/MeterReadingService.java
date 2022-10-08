@@ -6,7 +6,6 @@ import uk.tw.energy.domain.ElectricityReading;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class MeterReadingService {
@@ -17,8 +16,8 @@ public class MeterReadingService {
         this.meterAssociatedReadings = meterAssociatedReadings;
     }
 
-    public Optional<List<ElectricityReading>> getReadings(String smartMeterId) {
-        return Optional.ofNullable(meterAssociatedReadings.get(smartMeterId));
+    public List<ElectricityReading> getReadings(String smartMeterId) {
+        return meterAssociatedReadings.get(smartMeterId);
     }
 
     public void storeReadings(String smartMeterId, List<ElectricityReading> electricityReadings) {
